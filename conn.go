@@ -20,17 +20,17 @@ type Client struct {
 }
 
 //Need to rewrite this, to only create clients either a ws conn, or a http.ResponseWrite / http.Request
-func NewClient(w http.ResponseWriter, r *http.Request) *Client {
+func NewClient(w http.ResponseWriter, r *http.Request) (*Client, error) {
 	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
 	if _, ok := err.(websocket.HandshakeError); ok {
 		http.Error(w, "Not a websocket handshake", 400)
-		return
+		return nil, err
 	} else if err != nil {
-		return
+		return nil, err
 	}
 
 	c := &Client{send: make(chan []byte, 256), ws: ws}
-	return c
+	return c, nil
 }
 
 //Write a message back to the client
@@ -45,14 +45,14 @@ func (c *Client) WriteString(msg string) {
 
 //Read a message from the websocket connection, wait untill you get a message
 func (c *Client) Read() []byte {
-	_, msg := c.ws.ReadMessage()
+	_, msg, _ := c.ws.ReadMessage()
 	return msg
 }
 
 //Read a message, but give up after a given timeout (ms)
 //returns nil if the timeout is hit
-func (c *Client) ReadTimeout(timeout int) []byte {
-	t := time.After(time.Millisecond * timeout)
+func (c *Client) ReadTimeout(timeout time.Duration) []byte {
+	t := time.After(timeout)
 
 	//Spin off a goroutine that reads a message from the ws, and send it down a channel
 	ch := make(chan []byte)
@@ -81,7 +81,7 @@ func (c *Client) runner() {
 }
 
 //Remove maybe (Create a default wsHandler to use easily)
-func wsHandler(w http.ResponseWriter, r *http.Request) {
+/*func wsHandler(w http.ResponseWriter, r *http.Request) {
 	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
 	if _, ok := err.(websocket.HandshakeError); ok {
 		http.Error(w, "Not a websocket handshake", 400)
@@ -93,4 +93,4 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	h.register <- c
 	defer func() { h.unregister <- c }()
 	c.writer()
-}
+}*/

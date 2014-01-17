@@ -1,24 +1,24 @@
 package wsHub
 
 import (
-	"fmt"
-	"github.com/gorilla/websocket"
-	"net/http"
+/*"fmt"
+"github.com/gorilla/websocket"
+"net/http"*/
 )
 
 //Central communitaion struct
 type WsHub struct {
 	// Registered connections.
-	connections map[*connection]bool
+	connections map[*Client]bool
 
 	// Inbound messages from the connections.
 	broadcast chan []byte
 
 	// Register requests from the connections.
-	register chan *connection
+	register chan *Client
 
 	// Unregister requests from connections.
-	unregister chan *connection
+	unregister chan *Client
 
 	kill chan bool
 }
@@ -42,7 +42,6 @@ func (h *WsHub) Run() {
 		select {
 		case c := <-h.register:
 			h.connections[c] = true
-			go c.runner()
 		case c := <-h.unregister:
 			delete(h.connections, c)
 			close(c.send)
@@ -56,7 +55,7 @@ func (h *WsHub) Run() {
 					go c.ws.Close()
 				}
 			}
-		case h.kill <- b:
+		case <-h.kill:
 			break
 		}
 	}
@@ -70,6 +69,6 @@ func (h *WsHub) Kill() {
 //Register a given client object
 func (h *WsHub) RegisterClient(c *Client) {
 	h.register <- c
+	go c.runner()
 	defer func() { h.unregister <- c }()
-	c.writer()
 }
