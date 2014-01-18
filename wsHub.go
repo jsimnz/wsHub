@@ -1,10 +1,6 @@
 package wsHub
 
-import (
-/*"fmt"
-"github.com/gorilla/websocket"
-"net/http"*/
-)
+import ()
 
 //Central communitaion struct
 type WsHub struct {
@@ -62,7 +58,7 @@ func (h *WsHub) Run() {
 }
 
 // Kill the running hub
-func (h *WsHub) Kill() {
+func (h *WsHub) Stop() {
 	h.kill <- true
 }
 

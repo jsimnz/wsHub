@@ -70,7 +70,7 @@ func (c *Client) ReadTimeout(timeout time.Duration) []byte {
 }
 
 //Writes to the ws conection via broadcast
-func (c *Client) runner() {
+func (c *Client) Start() {
 	for message := range c.send {
 		err := c.ws.WriteMessage(websocket.TextMessage, message)
 		if err != nil {
