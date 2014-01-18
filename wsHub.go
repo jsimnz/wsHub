@@ -71,3 +71,8 @@ func (h *WsHub) RegisterClient(c *Client) {
 func (h *WsHub) UnregisterClient(c *Client) {
 	h.unregister <- c
 }
+
+//Broadcast a message to all connected clients
+func (h *WsHub) Broadcast(msg []byte) {
+	h.broadcast <- msg
+}
