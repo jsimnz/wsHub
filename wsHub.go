@@ -65,5 +65,9 @@ func (h *WsHub) Stop() {
 //Register a given client object
 func (h *WsHub) RegisterClient(c *Client) {
 	h.register <- c
-	defer func() { h.unregister <- c }()
+}
+
+//Unregister a given client
+func (h *WsHub) UnregisterClient(c *Client) {
+	h.unregister <- c
 }
