@@ -1,6 +1,7 @@
 package wsHub
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -46,10 +47,25 @@ func (c *Client) WriteString(msg string) {
 	c.send <- []byte(msg)
 }
 
+func (c *Client) WriteJSON(msg interface{}) {
+	msgJSON, _ := json.Marshal(msg)
+	c.send <- msgJSON
+}
+
 //Read a message from the websocket connection, wait untill you get a message
 func (c *Client) Read() ([]byte, error) {
 	_, msg, err := c.ws.ReadMessage()
 	return msg, err
+}
+
+func (c *Client) ReadString() (string, error) {
+	_, msg, err := c.ws.ReadMessage()
+	return string(msg), err
+}
+
+func (c *Client) ReadJSON(bean interface{}) error {
+	err := c.ws.ReadJSON(bean)
+	return err
 }
 
 //Read a message, but give up after a given timeout (ms)
@@ -57,7 +73,7 @@ func (c *Client) Read() ([]byte, error) {
 func (c *Client) ReadTimeout(timeout time.Duration) ([]byte, error) {
 	t := time.After(timeout)
 
-	//Spin off a goroutine that reads a message from the ws, and send it down a channel
+	// Spin off a goroutine that reads a message from the ws, and send it down a channel
 	ch := make(chan []byte)
 	errchan := make(chan error)
 	go func() {
@@ -69,9 +85,9 @@ func (c *Client) ReadTimeout(timeout time.Duration) ([]byte, error) {
 	}()
 
 	select {
-	case <-t: //We hit a timeout before getting a message from the websocket conn
-		return nil, TimeoutErr //Create new timeout error
-	case msg := <-ch: //We got a message from the websocket before the timeout
+	case <-t: // We hit a timeout before getting a message from the websocket conn
+		return nil, TimeoutErr
+	case msg := <-ch: // We got a message from the websocket before the timeout
 		return msg, nil
 	case err := <-errchan:
 		return nil, err
@@ -88,18 +104,3 @@ func (c *Client) Start() {
 	}
 	c.ws.Close()
 }
-
-//Remove maybe (Create a default wsHandler to use easily)
-/*func wsHandler(w http.ResponseWriter, r *http.Request) {
-	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
-	if _, ok := err.(websocket.HandshakeError); ok {
-		http.Error(w, "Not a websocket handshake", 400)
-		return
-	} else if err != nil {
-		return
-	}
-	c := &Client{send: make(chan []byte, 256), ws: ws}
-	h.register <- c
-	defer func() { h.unregister <- c }()
-	c.writer()
-}*/

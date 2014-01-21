@@ -1,6 +1,7 @@
 package wsHub
 
 import (
+	"encoding/json"
 	"fmt"
 )
 
@@ -78,4 +79,9 @@ func (h *WsHub) UnregisterClient(c *Client) {
 //Broadcast a message to all connected clients
 func (h *WsHub) Broadcast(msg []byte) {
 	h.broadcast <- msg
+}
+
+func (h *WsHub) BroadcastJSON(msg interface{}) {
+	msgJSON, _ := json.Marshal(msg)
+	h.broadcast <- msgJSON
 }
