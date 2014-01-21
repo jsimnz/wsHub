@@ -1,12 +1,15 @@
 package wsHub
 
 import (
+	"errors"
 	"github.com/gorilla/websocket"
 	"net/http"
 	"time"
 )
 
-type WsHandler func(http.ResponseWriter, *http.Request, WsHub)
+var (
+	TimeoutErr = errors.New("Didnt recieve message before timeout") //Is it best to use an error for the timeout
+)
 
 type Client struct {
 	// The websocket connection.
@@ -44,28 +47,34 @@ func (c *Client) WriteString(msg string) {
 }
 
 //Read a message from the websocket connection, wait untill you get a message
-func (c *Client) Read() []byte {
-	_, msg, _ := c.ws.ReadMessage()
-	return msg
+func (c *Client) Read() ([]byte, error) {
+	_, msg, err := c.ws.ReadMessage()
+	return msg, err
 }
 
 //Read a message, but give up after a given timeout (ms)
 //returns nil if the timeout is hit
-func (c *Client) ReadTimeout(timeout time.Duration) []byte {
+func (c *Client) ReadTimeout(timeout time.Duration) ([]byte, error) {
 	t := time.After(timeout)
 
 	//Spin off a goroutine that reads a message from the ws, and send it down a channel
 	ch := make(chan []byte)
+	errchan := make(chan error)
 	go func() {
-		m := c.Read()
+		m, err := c.Read()
+		if err != nil {
+			errchan <- err
+		}
 		ch <- m
 	}()
 
 	select {
 	case <-t: //We hit a timeout before getting a message from the websocket conn
-		return nil
+		return nil, TimeoutErr //Create new timeout error
 	case msg := <-ch: //We got a message from the websocket before the timeout
-		return msg
+		return msg, nil
+	case err := <-errchan:
+		return nil, err
 	}
 }
 
