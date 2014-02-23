@@ -24,8 +24,17 @@ type Client struct {
 }
 
 //Need to rewrite this, to only create clients either a ws conn, or a http.ResponseWrite / http.Request
-func NewClient(w http.ResponseWriter, r *http.Request) (*Client, error) {
-	ws, err := websocket.Upgrade(w, r, nil, 1024, 1024)
+func NewClient(w http.ResponseWriter, r *http.Request, bufSize ...int) (*Client, error) {
+	readBuf := 1024
+	writeBuf := 1024
+	if len(bufSize) == 1 {
+		readBuf = bufSize[0]
+	} else if len(bufSize) >= 2 {
+		readBuf = bufSize[0]
+		writeBuf = bufSize[1]
+	}
+
+	ws, err := websocket.Upgrade(w, r, nil, readBuf, writeBuf)
 	if _, ok := err.(websocket.HandshakeError); ok {
 		http.Error(w, "Not a websocket handshake", 400)
 		return nil, err
