@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	hub wsHub.WsHub
+	hub *wsHub.WsHub
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 
 	http.HandleFunc("/ws/chat", wsHandler)
 	fmt.Println("Starting web server...")
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(":9090", nil)
 }
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +43,6 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		hub.Broadcast(resp)
+		hub.Broadcast(client, resp)
 	}
 }

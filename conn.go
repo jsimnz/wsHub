@@ -12,13 +12,18 @@ var (
 	TimeoutErr = errors.New("Timeout hit before messaged recieved") //Is it best to use an error for the timeout
 )
 
+type message struct {
+	ref *Client
+	val []byte
+}
+
 type Client struct {
 	// The websocket connection.
 	ws *websocket.Conn
 	// Leader flag
 	isLeader bool
 	// Buffered channel of outbound messages.
-	send chan []byte
+	send chan message
 	//Response
 	response []byte
 }
@@ -52,7 +57,6 @@ func NewLeader(w http.ResponseWriter, r *http.Request, bufSize ...int) (*Client,
 }
 
 func newConnection(w http.ResponseWriter, r *http.Request, leader bool, readbufsize, writebufsize int) (*Client, error) {
-
 	ws, err := websocket.Upgrade(w, r, nil, readbufsize, writebufsize)
 	if _, ok := err.(websocket.HandshakeError); ok {
 		http.Error(w, "Not a websocket handshake", 400)
@@ -61,24 +65,24 @@ func newConnection(w http.ResponseWriter, r *http.Request, leader bool, readbufs
 		return nil, err
 	}
 
-	c := &Client{send: make(chan []byte, 256), ws: ws, isLeader: leader}
+	c := &Client{send: make(chan message, 256), ws: ws, isLeader: leader}
 	return c, nil
 }
 
 // Write a message back to the client
 func (c *Client) Write(msg []byte) {
-	c.send <- msg
+	c.send <- message{c, msg}
 }
 
 // Write a string message to the client
 func (c *Client) WriteString(msg string) {
-	c.send <- []byte(msg)
+	c.send <- message{c, []byte(msg)}
 }
 
 // Write a JSON message to the client
 func (c *Client) WriteJSON(msg interface{}) {
 	msgJSON, _ := json.Marshal(msg)
-	c.send <- msgJSON
+	c.send <- message{c, msgJSON}
 }
 
 // Read a message from the websocket connection, wait untill you get a message
@@ -126,7 +130,7 @@ func (c *Client) ReadTimeout(timeout time.Duration) ([]byte, error) {
 // Starts the client listening handler to write messages to
 func (c *Client) Start() {
 	for message := range c.send {
-		err := c.ws.WriteMessage(websocket.TextMessage, message)
+		err := c.ws.WriteMessage(websocket.TextMessage, message.val)
 		if err != nil {
 			break
 		}

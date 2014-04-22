@@ -12,7 +12,7 @@ type WsHub struct {
 	// Leader connections
 	leaders map[*Client]bool
 	// Inbound messages from the connections.
-	broadcast chan []byte
+	broadcast chan message
 	// Register requests from the connections.
 	register chan *Client
 	// Unregister requests from connections.
@@ -24,7 +24,7 @@ type WsHub struct {
 //Create new hub
 func NewHub() *WsHub {
 	return &WsHub{
-		broadcast:   make(chan []byte),
+		broadcast:   make(chan message),
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		connections: make(map[*Client]bool),
@@ -52,13 +52,16 @@ func (h *WsHub) Run() {
 			close(c.send)
 		case m := <-h.broadcast:
 			for c := range h.connections {
-				select {
-				case c.send <- m:
-					fmt.Println("Broadcasting...")
-				default:
-					delete(h.connections, c)
-					close(c.send)
-					go c.ws.Close()
+				if m.ref != c {
+					select {
+					case c.send <- m:
+						fmt.Println("Broadcasting...")
+					default:
+						delete(h.connections, c)
+						close(c.send)
+						go c.
+							ws.Close()
+					}
 				}
 			}
 		case <-h.kill:
@@ -83,11 +86,11 @@ func (h *WsHub) UnregisterClient(c *Client) {
 }
 
 //Broadcast a message to all connected clients
-func (h *WsHub) Broadcast(msg []byte) {
-	h.broadcast <- msg
+func (h *WsHub) Broadcast(c *Client, msg []byte) {
+	h.broadcast <- message{c, msg}
 }
 
-func (h *WsHub) BroadcastJSON(msg interface{}) {
+func (h *WsHub) BroadcastJSON(c *Client, msg interface{}) {
 	msgJSON, _ := json.Marshal(msg)
-	h.broadcast <- msgJSON
+	h.broadcast <- message{c, msgJSON}
 }
