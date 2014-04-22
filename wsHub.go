@@ -9,29 +9,27 @@ import (
 type WsHub struct {
 	// Registered connections.
 	connections map[*Client]bool
-
+	// Leader connections
+	leaders map[*Client]bool
 	// Inbound messages from the connections.
 	broadcast chan []byte
-
 	// Register requests from the connections.
 	register chan *Client
-
 	// Unregister requests from connections.
 	unregister chan *Client
-
+	// kill signal
 	kill chan bool
 }
 
 //Create new hub
-func NewHub() WsHub {
-	h := WsHub{
+func NewHub() *WsHub {
+	return &WsHub{
 		broadcast:   make(chan []byte),
 		register:    make(chan *Client),
 		unregister:  make(chan *Client),
 		connections: make(map[*Client]bool),
+		leaders:     make(map[*Client]bool),
 	}
-
-	return h
 }
 
 // Run the hub (most likely in its own goroutine)
@@ -40,9 +38,17 @@ func (h *WsHub) Run() {
 	for {
 		select {
 		case c := <-h.register:
-			h.connections[c] = true
+			if c.isLeader {
+				h.leaders[c] = true
+			} else {
+				h.connections[c] = true
+			}
 		case c := <-h.unregister:
-			delete(h.connections, c)
+			if c.isLeader {
+				delete(h.leaders, c)
+			} else {
+				delete(h.connections, c)
+			}
 			close(c.send)
 		case m := <-h.broadcast:
 			for c := range h.connections {
