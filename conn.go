@@ -53,7 +53,7 @@ func NewLeader(w http.ResponseWriter, r *http.Request, bufSize ...int) (*Client,
 
 func newConnection(w http.ResponseWriter, r *http.Request, leader bool, readbufsize, writebufsize int) (*Client, error) {
 
-	ws, err := websocket.Upgrade(w, r, nil, readBufsize, writeBufsize)
+	ws, err := websocket.Upgrade(w, r, nil, readbufsize, writebufsize)
 	if _, ok := err.(websocket.HandshakeError); ok {
 		http.Error(w, "Not a websocket handshake", 400)
 		return nil, err
